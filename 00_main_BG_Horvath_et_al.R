@@ -1,6 +1,6 @@
 #### Improving the representation of high-latitude vegetation in Dynamic Global Vegetation Models ####
-# Dynamical Vegetation model version CLM-DV4.5
-# updated: 30.4.2020
+# Dynamical Vegetation model version CLM4.5-BGCDV
+# updated: 21.10.2020
 # author: Peter Horvath
 # based on data created also by Hui Tang
 # part of scripts reused from: http://www.neonscience.org/field-data-polygons-centroids
@@ -14,73 +14,41 @@ library(sf)
 library(rgdal)
 library(rgeos) 
 library(sp)
-library(ggplot2)
-#library(data.table) 
-#library(dplyr)
+library(data.table) 
+library(dplyr)
 library(vegan)
 
 #ploting
 library(ggplot2)
 library(scales)
 library(gridExtra)
-#### Define paths ####
-# all AR18x18 dissolved data
 
-proj_folder <- "E:/Project_2"
-in_NOR_data <- "E:/Project_2/HUI_CLM_layers/Norway_borders_N50"
-in_veg_data <- "E:/Project_2/HUI_CLM_layers/AR18x18_plots"
-in_pts_data <- "E:/Project_2/Single point plots CLM4.5"
-in_RS_data <- "E:/Project_2/LAND COVER DATA/Satveg_deling_nd_partnere_09_12_2009/tiff/"
-in_binary_raster <- "E:/Project_1_RUNS/new_MODEL_RUN/07_proportion_raster/Binary_raster/"
-in_probab_raster <- "E:/Project_1_RUNS/new_MODEL_RUN/04_predict_raster/"
-in_raster <- "E:/Project_1_FINAL_layers/MASKED_TIFF/"
-in_dm_data <- "E:/Project_2/OUTPUT/"
-in_csv_files <- "C:/Users/peterhor/Documents/GitHub/Project_2/"
-out_folder <- "E:/Project_2_RUNS/OUTPUT"
-out_ggplots <- "E:/Project_2_RUNS/OUTPUT/results/ggplots"
+#### Define paths ####
+# adjust paths to point to specific files
+proj_folder <- #"E:/Project_2"
+in_NOR_data <- #"E:/Project_2/HUI_CLM_layers/Norway_borders_N50"
+in_veg_data <- #"E:/Project_2/HUI_CLM_layers/AR18x18_plots"
+in_pts_data <- #"E:/Project_2/Single point plots CLM4.5"
+in_RS_data <- #"E:/Project_2/LAND COVER DATA/Satveg_deling_nd_partnere_09_12_2009/tiff/"
+in_binary_raster <- #"E:/Project_1_RUNS/new_MODEL_RUN/07_proportion_raster/Binary_raster/"
+in_probab_raster <- #"E:/Project_1_RUNS/new_MODEL_RUN/04_predict_raster/"
+in_raster <- #"E:/Project_1_FINAL_layers/MASKED_TIFF/"
+in_dm_data <- #"E:/Project_2/OUTPUT/"
+in_csv_files <- #"C:/Users/peterhor/Documents/GitHub/Project_2/"
+out_folder <- #"E:/Project_2_RUNS/OUTPUT"
+out_ggplots <- #"E:/Project_2_RUNS/OUTPUT/results/ggplots"
 dir.create(file.path(out_folder),showWarnings=F)
 
 #### CRS:  WGS84 UTM zone 33N ####
 project_crs <- crs("+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
-sr <- "+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"
-#### Read in data ####
-PFT <- read.csv(paste0(in_csv_files,"02_Translation_schemes/PFT.csv"), sep = ";", dec = ".")
-# NOR_border <- readOGR(in_NOR_data, "Landmf_N50_dissolved")
-# summary(NOR_border)
-# NOR_border_df <- fortify(NOR_border) #for use with ggplot2
-# plot(NOR_border, col="lightgreen")
 
-# Remote sensing rasters from SatVeg (https://kartkatalog.miljodirektoratet.no/MapService/Details/satveg)
-RS_north <- raster(paste0(in_RS_data,"SatVeg_NN_30m.tif"))
-#crs(RS_north) <- "+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"
-RS_south <- raster(paste0(in_RS_data,"SatVeg_SN_30m.tif"))
-RS_Norway <-merge(RS_south, RS_north, filename=paste0(in_RS_data,"/RS_Norway"), format="GTiff", overwrite=TRUE)
-crs(RS_Norway)
-# RS_Norway <- raster(paste0(in_RS_data,"RS_Norway.tif"))
-RS_Norway33 <- projectRaster(RS_Norway, crs=sr, filename=paste0(in_RS_data,"/RS_Norway_utm33"), format="GTiff", overwrite=TRUE)
-#RS_Norway33 <- raster(paste0(in_RS_data,"RS_Norway_utm33.tif"))
-#crs(RS_south) <- "+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"
-# plot(RS_north)
-# read in DM *preliminary results from 3 DM attempts
-DM_maxval <- raster(paste0(out_folder,"/DM_maxVal/DM_maxval.tif"))
-DM_preval <- raster(paste0(out_folder,"/DM_max_preval/DM_preval_fill.tif"))
-DM_AUC <- raster(paste0(out_folder,"/DM_max_AUC/DM_AUC_fill.tif"))
-DM_maxval_PFT <- raster(paste0(out_folder,"/DM_maxVal/DM_maxval_PFT.tif"))
-DM_preval_PFT <- raster(paste0(out_folder,"/DM_max_preval/DM_preval_PFT.tif"))
-DM_AUC_PFT <- raster(paste0(out_folder,"/DM_max_AUC/DM_AUC_PFT.tif"))
-crs(DM_maxval)
-# read in DM *preliminary results from BinaryTreshold attempt
 
 
 #### Create 1km boxes 20x####
 veg_plots <- readOGR(in_veg_data, "Hui_dissolved_plots")
 veg_plots@proj4string
-#need for transformation
-
-# veg_plots <- spTransform(veg_plots_trans, CRS("+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-# veg_plots@proj4string
 #subset
-# plot ID numbers to be subset
+# plot ID numbers to be subset (as in supplement S1)
 test_20_plots <- c(	405,	513,	622,	801,	922,	1131,
                     1304,	1322,	1623,	2015,	2108,	2238,	2332,	2425,
                     2948,	2962,	4268,	5369,	6380, 6473)
@@ -146,56 +114,27 @@ writeOGR(single_cell_1km_df, layer = 'single_cell_1km_df', out_folder,
          overwrite_layer = TRUE, driver = 'ESRI Shapefile')
 
 #### Create 1km boxes 1081x####
-#here, since DGVM is not available, we can create boxes corresponding to AR18x18 (600*1500)
-# or in fact we can just crop with "Hui_dissolved_plots"
+#here, since DGVM is not available we can just crop with "Hui_dissolved_plots" and create centroids
 veg_plots <- readOGR(in_veg_data, "Hui_dissolved_plots")
 center_1081 <- gCentroid(veg_plots,byid=TRUE, id = veg_plots@data$FLATE_NR)
-radius <- 500 # radius in meters
-# define the plot edges based upon the plot radius. 
-yPlus <- center_1081@coords[,2]+radius
-xPlus <- center_1081@coords[,1]+radius
-yMinus <- center_1081@coords[,2]-radius
-xMinus <- center_1081@coords[,1]-radius
-# calculate polygon coordinates for each plot centroid. 
-square=cbind(xMinus,yPlus,  # NW corner
-             xPlus, yPlus,  # NE corner
-             xPlus,yMinus,  # SE corner
-             xMinus,yMinus, # SW corner
-             xMinus,yPlus)  # NW corner again - close ploygon
-# Extract the plot ID information
-ID=veg_plots@data$FLATE_NR
-# First, initialize a list that will later be populated
-# a, as a placeholder, since this is temporary
-a <- vector('list', length(2))
-# loop through each centroid value and create a polygon
-# this is where we match the ID to the new plot coordinates
-for (i in 1:length(center_1081@coords[,1])) {  # for each for in object centroids
-  a[[i]]<-Polygons(list(Polygon(matrix(square[i, ], ncol=2, byrow=TRUE))), ID[i]) 
-  # make it an Polygon object with the Plot_ID from object ID
-}
-# convert a to SpatialPolygon and assign CRS
-single_cell_1km_1081<-SpatialPolygons(a,proj4string=CRS("+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-# Create SpatialPolygonDataFrame -- this step is required to output multiple polygons.
-single_cell_1km_1081_df <- SpatialPolygonsDataFrame(single_cell_1km_1081, data.frame(id=ID, row.names=ID))
-#single_cell_1km_df <- readOGR(layer = 'single_cell_1km_df', out_folder)
-crs(single_cell_1km_1081_df)
-#crs(single_cell_1km_df) <- "+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"
-# write 1x1 into the shapefiles 
-writeOGR(single_cell_1km_1081_df, layer = 'single_cell_1km_1081_df', paste0(out_folder, "/single_cells_1081_compare"),
-         overwrite_layer = TRUE, driver = 'ESRI Shapefile')
 
 ## frequency TEMP & PRECIP distribution diagrams ####
 #20 vs 1081 plots along temp and precip gradient 
 # load in rasters for temp and precip
 bioclim_1 <- raster(paste0(in_raster,"bioclim_1.tif"))
 bioclim_12 <- raster(paste0(in_raster,"bioclim_12.tif"))
-plot(bioclim_1)
-plot(center_1081, add=TRUE)
-# extract values
+bioclim_15 <- raster(paste0(in_raster,"bioclim_15.tif"))
+# check plotting
+plot(bioclim_15)
+plot(center_20_test, add=TRUE)
+
 c20_bioclim_1 <- extract(bioclim_1, center_20_test)
 c1081_bioclim_1 <- extract(bioclim_1, center_1081)
 c20_bioclim_12 <- extract(bioclim_12, center_20_test)
 c1081_bioclim_12 <- extract(bioclim_12, center_1081)
+c20_bioclim_15 <- extract(bioclim_15, center_20_test)
+c1081_bioclim_15 <- extract(bioclim_15, center_1081)
+
 # plot histograms 
 hist(c20_bioclim_1)
 hist(c1081_bioclim_1)
@@ -209,19 +148,30 @@ ks.test(c20_bioclim_1, c1081_bioclim_1)
 var.test(c20_bioclim_12, c1081_bioclim_12)
 t.test(c20_bioclim_12, c1081_bioclim_12)
 ks.test(c20_bioclim_12, c1081_bioclim_12)
-chisq.test(c20_bioclim_12, c1081_bioclim_12)
+
+var.test(c20_bioclim_15, c1081_bioclim_15)
+t.test(c20_bioclim_15, c1081_bioclim_15)
+ks.test(c20_bioclim_15, c1081_bioclim_15)
 
 # publication plots in ggplot
 temperature_data <- data.frame(type=rep(c("c_20", "c_1081"), c(20,1081)), data= c(c20_bioclim_1,c1081_bioclim_1))
 precipitation_data <- data.frame(type=rep(c("c_20", "c_1081"), c(20,1081)), data= c(c20_bioclim_12,c1081_bioclim_12))
+bio15_data <- data.frame(type=rep(c("c_20", "c_1081"), c(20,1081)), data= c(c20_bioclim_15,c1081_bioclim_15))
+swe_data <- data.frame(type=rep(c("c_20", "c_1081"), c(20,1081)), data= c(c20_swe_10,c1081_swe_10))
+tmin_data <- data.frame(type=rep(c("c_20", "c_1081"), c(20,1081)), data= c(c20_tmin_5,c1081_tmin_5))
 library(ggplot2)
 ggplot(temperature_data, aes(x=data, fill=type)) + geom_density(alpha=.3)
 ggplot(precipitation_data, aes(x=data, fill=type)) + geom_density(alpha=.3)
+ggplot(bio15_data, aes(x=data, fill=type)) + geom_density(alpha=.3)
+ggplot(swe_data, aes(x=data, fill=type)) + geom_density(alpha=.3)
+ggplot(tmin_data, aes(x=data, fill=type)) + geom_density(alpha=.3)
 library(plyr)
 t_mean <- ddply(temperature_data, "type", summarise, rating.mean=mean(data, na.rm=T))
 t_mean
 p_mean <- ddply(precipitation_data, "type", summarise, rating.mean=mean(data, na.rm=T))
 p_mean
+bio15_mean <- ddply(bio15_data, "type", summarise, rating.mean=mean(data, na.rm=T))
+bio15_mean
 
 t_plot <- ggplot(temperature_data, aes(x=data, fill=type)) + # scale_fill_discrete(name="Dataset", labels=c("1081 plots", "20 test plots")) +
   geom_density(alpha=.3) + 
@@ -241,12 +191,24 @@ p_plot <- ggplot(precipitation_data, aes(x=data, fill=type)) + # scale_fill_disc
        x="Annual Precipitation (mm)",
        y="Density")
 
+bio15_plot <- ggplot(bio15_data, aes(x=data, fill=type)) + # scale_fill_discrete(name="Dataset", labels=c("1081 plots", "20 test plots")) +
+  geom_density(alpha=.3) + 
+  geom_vline(data = bio15_mean, aes(xintercept = rating.mean, colour = type),
+             linetype = "longdash", size=1) +
+  labs(title="frequency distribution", 
+       #caption="Source: NCAR, SatVeg",
+       x="Precipitation Seasonality",
+       y="Density")
+
+
 #export
 ggsave(plot = t_plot, filename = paste0("Temp_distribution_20vs1081",".png"), device = "png", path = paste0(out_ggplots),dpi = 300 )
 ggsave(plot = p_plot, filename = paste0("Precip_distribution_20vs1081",".png"), device = "png", path = paste0(out_ggplots),dpi = 300 )
+ggsave(plot = bio15_plot, filename = paste0("Precip_seasonality_20vs1081",".png"), device = "png", path = paste0(out_ggplots),dpi = 300 )
 
 #### climate data test####
 # cordex vs seNorge
+# read in climate data from table S1 in the supplement, where centervalues for each plot are shown
 cordex_check <-read.csv2("C:/Users/peterhor/Google Drive/2015 - University of Oslo/Project 2/20_plots_lat_long_alt_temp_precip_CORDEX.csv", sep = ";", dec = ".")
 plot(cordex_check$SeNorge_precip~cordex_check$CORDEX_precip)
 abline(a=1, b=1)
@@ -257,8 +219,9 @@ library(ggplot2)
 
 climate_precip <- ggplot(cordex_check, aes(x=SeNorge_precip, y=CORDEX_precip)) + # scale_fill_discrete(name="Dataset", labels=c("1081 plots", "20 test plots")) +
   geom_point(data = cordex_check, size=2) +
-  geom_abline(intercept =  , slope = 1, color="red", 
+  geom_abline(intercept =  , slope = 1, color="black", 
               linetype="dashed", size=0.5) +
+  stat_smooth(formula=y~x, method = lm, alpha=0.2, linetype="dotted", size=0.5, color="blue") +
   labs(title="CORDEX vs SeNorge", 
        #caption="Source: NCAR, SatVeg",
        x="SeNorge - Annual Precipitation (mm)",
@@ -268,8 +231,9 @@ ggsave(plot = climate_precip, filename = paste0("CORDEX_vs_seNorge_precip.png"),
 
 climate_temp <- ggplot(cordex_check, aes(x=SeNorge_temp, y=CORDEX_temp)) + # scale_fill_discrete(name="Dataset", labels=c("1081 plots", "20 test plots")) +
   geom_point(data = cordex_check, size=2) +
-  geom_abline(intercept =  , slope = 1, color="red", 
+  geom_abline(intercept =  , slope = 1, color="black", 
               linetype="dashed", size=0.5) +
+  stat_smooth(formula=y~x, method = lm, alpha=0.2, linetype="dotted", size=0.5, color="red") +
 labs(title="CORDEX vs SeNorge", 
      #caption="Source: NCAR, SatVeg",
      x="SeNorge - Annual Mean Temperature (°C)",
@@ -325,9 +289,10 @@ rownames(AR_VT_20_perc) <- rownames(AR_VT_20)
 AR_VT_20_perc <- round(AR_VT_20_perc, 2)
 names(AR_VT_20_perc) <- paste0("X", colnames(AR_VT_20))
 #AR_VT_20_perc[1:4]
+# save output
 write.csv2(AR_VT_20_perc, paste0(out_folder,"/AR18x18/AR_VT_20.csv"))
 
-#### test representativness of 20 plots ####
+#### test representativness of VT coverage on the 20 plots ####
 #sum areas
 AR_VT_1081_freq <- rowSums(AR_VT_1081/sum(AR_VT_1081)*100) #
 write.csv2(AR_VT_1081_freq, paste0(out_folder,"/AR18x18/AR_VT_1081_freq.csv"))
@@ -347,30 +312,10 @@ write.csv2(AR_VT_repre, paste0(out_folder,"/AR18x18/AR_VT_representative.csv"))
 plot(AR_VT_1081_freq~AR_VT_20_freq)
 
 
-# problem with self-intersection solved by following https://gis.stackexchange.com/questions/119474/clipping-two-spatialpolygons-error-in-rgeosbintopofunc
-ar18x18_test <-gBuffer(ar18x18_test, byid=TRUE, width=0)
-single_cell_1km_df <- gBuffer(single_cell_1km_df, byid=TRUE, width=0)
-ar_clip <- crop(ar18x18_test, single_cell_1km, byid=TRUE)
-#update areas of polygons
-ar_clip$AREA_2 <- area(ar_clip)
-    # head(clip_test@data[,c("AREA_2","AREA")], n=100)
-    # head(sort(clip_test@data[,"AREA_2"]), n=10)
-    # clip_test@data$AREA[1:40]
-    #clip_test@data$AREA_2[1:40]
-plot(subset(ar_clip, ar_clip@data$FLATE_NR==222))
-
-ar_clip_data <- data.table(ar_clip@data[,c("VEG1","FLATE_NR","AREA_2")])# save only relevant data as dataframe
-# examine coverage for each FLATE_NR
-# area stats for each plot
-#create summary with xtabs, saving as matrix
-ar_clip_vt_flate <- as.data.frame.matrix(xtabs(ar_clip_data$AREA~ar_clip_data$VEG1+ar_clip_data$FLATE_NR))
-row.names(ar_clip_vt_flate) # noquote(row.names(tab_21_raw))
-#adjust order of rows so that not 10a but 1a comes first
-ar_clip_vt_flate <- ar_clip_vt_flate[match(transl_rule_AR[,1], rownames(ar_clip_vt_flate)),]
-row.names(ar_clip_vt_flate) # changed order
-
 #### .... #####################
 #### ** RS dataset ####
+# Remote sensing rasters from SatVeg (https://kartkatalog.miljodirektoratet.no/MapService/Details/satveg)
+RS_Norway33 <- raster(paste0(in_RS_data,"RS_Norway_utm33.tif"))
 #### reclassify RS map of VT's into PFT map
 #load in translation rules
 transl_rule_RS <- read.csv(paste0(in_csv_files, "02_Translation_schemes/RS_to_PFT_final.csv"), sep = ";", dec = ".")
@@ -382,6 +327,7 @@ for(i in 1:NROW(transl_rule_RS)){
 }
 #transl <- cbind(transl_rule_RS$RS_code, transl_rule_RS$PFT_ID)
 
+# reclassify VT to PFT ####
 RS_Norway_PFT <- reclassify(RS_Norway33, transl_RS, include.lowest=TRUE, overwrite=TRUE,
                             filename = paste0(out_folder,"/RS/RS_PFT.tif")) 
 
@@ -393,7 +339,6 @@ write.csv2(RS_PFT_freq, file = paste0(out_folder,"RS/RS_PFT_freq.csv"))
 
 # then mask out only 1x1km from raster (this takes 15min)
 RS_PFT_single <- mask(RS_Norway_PFT, single_cell_1km_df, filename=paste0(out_folder,"/RS_PFT_single_cells_R"), format="GTiff", overwrite=TRUE)
-#RS_S_freq <- freq(RS_south)
 
 # extract values for all 1km squares
 single_cells_extr <- extract(RS_PFT_single, single_cell_1km_df, df=TRUE)
@@ -411,6 +356,8 @@ write.csv2(RS_table, paste0(out_folder,"/RS_table.csv"))
 
 #### .... #####################     
 #### ** DM dataset ####
+# DM results from Horvath et al. 2019 (Dryad repository)
+
 # load all rasters into a stack
 # read all raster files inside HOME folder and add them to a list
 r.list <- list.files(in_cropped_data_DM, pattern="tif$", full.names=TRUE)
@@ -422,7 +369,7 @@ names(r.stack)
 basename(r.list)
 crs(r.stack)
 
-# all norway
+# all Norway
 time_pred_start <- Sys.time()
 max_val <- which.max(r.stack)
 writeRaster(max_val, filename = paste0(out_folder_maxval, "DM_maxval.tif"), format="GTiff", overwrite=TRUE)
@@ -433,6 +380,9 @@ pred_time <- (time_pred_end-time_pred_start)
 print( paste( "calculation finished in", pred_time, sep=" "))
 plot(max_val)
 # r.freq <- table(getValues(max_val))
+# reclassify VT to PFT ####
+DM_PFT <- reclassify(max_val, transl_DM, include.lowest=TRUE, overwrite=TRUE,
+                            filename = paste0(out_folder,"/DM/DM_PFT.tif")) 
 raster_freq <- freq(max_val)
 write.csv2(raster_freq, paste0(out_folder_maxval,"DM_maxval_freq.csv"))
 max_val <- as.factor(max_val)
@@ -455,8 +405,23 @@ plot(max_val,col= c("grey",rev(rainbow(9))))
 title(main = paste("Maximum Value - unique category"))
 dev.off()
 
+#### .... ##################### 
+#### TRANSLATION scheme ####
+#### ******PFT*****#####
+# prepare or load data 
+# Translation schemes are based on the table S5 in supplement
+#load in translation rules
+transl_rule_DM <- read.csv(paste0(in_csv_files, "02_Translation_schemes/VEG_to_PFT_final.csv"), sep = ";", dec = ".")
+transl_rule_RS <- read.csv(paste0(in_csv_files, "02_Translation_schemes/RS_to_PFT_final.csv"), sep = ";", dec = ".")
+transl_rule_AR <- read.csv(paste0(in_csv_files, "02_Translation_schemes/AR18x18_to_PFT_final.csv"), sep = ";", dec = ".")
+
+
+
 #### .... #####################     
 ## function RASTER to PFT table ####
+
+# this function converts a raster (either DM or RS) on specified plots (20 selected plots)
+# into a PFT profile - table with percentage representation of each PFT
 rast_to_table <- function(rast, plots){
   # mask out only 1x1km from raster (this takes 15min)
   rast_mask <- mask(rast, plots)
@@ -478,24 +443,12 @@ rast_to_table <- function(rast, plots){
   # rast_mask_table <- round(rast_mask_table, 2)
   rownames(rast_mask_table) <- PFT[1:6,2]
   colnames(rast_mask_table) <- paste0("X", plots@data$id) # assign column names with plot ID
-  # to decide between 20 and 1081 dataset (for ease of saving reasons)
-  if( nrow(plots@data)<30){
-    print("saving 20 plots")
-    subfolder=20} else {
-        print("saving 1081 plots")
-        subfolder=1081}
-  #check size of plots to distinguish between 1km and 0.9km
-  if( area(plots)[1]==1e+06){
-    print("saving 1km squares")
-    subtype="single_cells_"
-    filetype="_sc"
-    colnames(rast_mask_table) <- paste0("X", plots@data$id)
-    } else {
-      print("saving AR rectangles")
-      subtype="single_AR_plots_"
-      filetype="_ar"
-      colnames(rast_mask_table) <- paste0("X", plots@data$FLATE_NR)}
-  # table(subset(single_cells_extr,single_cells_extr$ID==21)) # output only one locality *(ID=1)
+  # for ease of saving 
+  subfolder=20
+  subtype="single_cells_"
+  filetype="_sc"
+  colnames(rast_mask_table) <- paste0("X", plots@data$id)
+    # table(subset(single_cells_extr,single_cells_extr$ID==21)) # output only one locality *(ID=1)
     write.csv2(rast_mask_table, paste0(out_folder,subtype, subfolder,"_compare/",names(rast), filetype, subfolder,".csv"))
     write.csv2(rast_mask_table_excl, paste0(out_folder, subtype, subfolder,"_compare/",names(rast), filetype, subfolder,"_excl.csv"))
       # Save output
@@ -506,163 +459,14 @@ rast_to_table <- function(rast, plots){
 }
 # executing rast_to_table####
 #load rasters for use in function
-
 RS_PFT <- raster(paste0(out_folder,"/RS/RS_PFT.tif"))
-DM_AUC_PFT <- raster(paste0(out_folder_AUC,"DM_AUC_PFT.tif"))
-DM_maxval_PFT <- raster(paste0(out_folder_maxval,"DM_maxval_PFT.tif"))
-DM_preval_PFT <- raster(paste0(out_folder_preval,"DM_preval_PFT.tif"))
+DM_maxval_PFT <- raster(paste0(out_folder,"/DM/DM_maxval_PFT.tif"))
+
 # execute function 20squares
 rast_to_table(RS_PFT, single_cell_1km_df)
-rast_to_table(DM_AUC_PFT, single_cell_1km_df)
 rast_to_table(DM_maxval_PFT, single_cell_1km_df)
-rast_to_table(DM_preval_PFT, single_cell_1km_df)
-# execute function 1081 squares
-rast_to_table(RS_PFT, single_cell_1km_1081_df)
-rast_to_table(DM_AUC_PFT, single_cell_1km_1081_df)
-rast_to_table(DM_maxval_PFT, single_cell_1km_1081_df)
-rast_to_table(DM_preval_PFT, single_cell_1km_1081_df)
-# execute function for 20 plots
-rast_to_table(RS_PFT, veg_plot_20_test)
-rast_to_table(DM_AUC_PFT, veg_plot_20_test)
-rast_to_table(DM_maxval_PFT, veg_plot_20_test)
-rast_to_table(DM_preval_PFT, veg_plot_20_test)
-# execute function for 1081 plots
-rast_to_table(RS_PFT, veg_plots)
-rast_to_table(DM_AUC_PFT, veg_plots)
-rast_to_table(DM_maxval_PFT, veg_plots)
-rast_to_table(DM_preval_PFT, veg_plots)
 
-
-# execute funtion for nonPFT rasters
-#rast_to_table(RS_Norway33, single_cell_1km_df)
-# rast_to_table(DM_AUC, single_cell_1km_df)
-# rast_to_table(DM_maxval, single_cell_1km_df)
-# rast_to_table(DM_preval, single_cell_1km_df)
-
-
-
-#### .... ##################### 
-#### TRANSLATION SCHEME ####
-#### ******PFT*****#####
-# prepare or load data
-# DM had to be prepared in EXCEL because output classification from models didn't match with 31 VTs *(only 19)
-DM <- read.csv(paste0(in_csv_files,"01_Comparison_schemes/DM_maxval_PFT.csv"), sep = ";", dec = ".")
-      colnames(DM)[1] <- c("VT_code") #, test_20_plots
-DGVM <- read.csv(paste0(in_csv_files,"01_Comparison_schemes/DGVM_PFT.csv"), sep = ";", dec = ".")
-AR <- read.csv(paste0(in_csv_files,"01_Comparison_schemes/AR18x18_PFT.csv"), sep = ";", dec = ".")
-RS <- read.csv(paste0(in_csv_files,"01_Comparison_schemes/RS_PFT.csv"), sep = ";", dec = ".")
-      #colnames(RS) <- c("RS_code", test_20_plots)
-      
-# THERE IS A PROBLEM WITH MISSING VALUES IN RS DATASET *(15 AND 24 ARE NOT REPRESENTED) 
-#NEED TO ADD MANUALLY IN CSV
-#reuse RS from previous section
-names(RS)[1] <- "RS_code"
-RS_compare <- RS
- 
-library(dplyr)
-  #load in translation rules
-transl_rule_DM <- read.csv(paste0(in_csv_files, "02_Translation_schemes/VEG_to_PFT_final.csv"), sep = ";", dec = ".")
-transl_rule_RS <- read.csv(paste0(in_csv_files, "02_Translation_schemes/RS_to_PFT_final.csv"), sep = ";", dec = ".")
-transl_rule_AR <- read.csv(paste0(in_csv_files, "02_Translation_schemes/AR18x18_to_PFT_final.csv"), sep = ";", dec = ".")
-
-# * DM ####
-DM_compare <- data.frame(append(DM, list(transl_rule_DM$PFT_code), after=match("VT_code", names(DM))))
-DM_compare <- data.frame(append(DM_compare, list(transl_rule_DM$PFT_name), after=match("VT_code", names(DM))))
-names(DM_compare)[3] <- "PFT_name"
-names(DM_compare)[4] <- "PFT_code"
-DM_pft <- aggregate(DM_compare[5:length(DM_compare)], by=list(PFT_code=DM_compare$PFT_code), FUN=sum)
-#after being aggregated, need to harmonize sums to fractions of 100 (%)
-DM_pft_100 <- DM_pft
-str(DM_pft)
-# divide by sum of each column (number of raster cells) * 100
-DM_pft_100[2:NCOL(DM_pft_100)] <- DM_pft_100[2:NCOL(DM_pft_100)]/colSums(DM_pft[2:NCOL(DM_pft)])*100
-# round to 1 decimal
-DM_pft_100[2:NCOL(DM_pft_100)] <- round(DM_pft_100[2:NCOL(DM_pft_100)], 1)
-
-# * RS ####
-RS_compare <- data.frame(append(RS, list(rownames(RS)), after=0))
-names(RS_compare)[1] <- "RS_code"
-RS_compare <- data.frame(append(RS_compare, list(transl_rule_RS$PFT_code), after=match("RS_code", names(RS_compare))))
-RS_compare <- data.frame(append(RS_compare, list(transl_rule_RS$PFT_name), after=match("RS_code", names(RS))))
-names(RS_compare)[2] <- "PFT_name"
-names(RS_compare)[3] <- "PFT_code"
-RS_pft <- aggregate(RS_compare[4:length(RS_compare)], by=list(PFT_code=RS_compare$PFT_code), FUN=sum)
-lapply(RS_pft[2:22], sum)
-colSums(RS_pft[2:22])
-
-#after being aggregated, need to harmonize sums to fractions of 100 (%)
-RS_pft_100 <- RS_pft
-  # divide by sum of each column (number of raster cells) * 100
-RS_pft_100[2:NCOL(RS_pft_100)] <- RS_pft[2:NCOL(RS_pft)]/colSums(RS_pft[2:NCOL(RS_pft)])*100
-  # round to 1 decimal
-RS_pft_100[2:NCOL(RS_pft_100)] <- round(RS_pft_100[2:NCOL(RS_pft_100)], 1)
-
-# * AR ####
-# first reclassify the shapefile into PFT for later use in QGIS
-
-#save data into temp datatable
-#tmp_ar <- data.table(AR_VT_1081_polygons@data)
-#merge based on VT
-unique(ar18x18_raw$VEG1) 
-unique(transl_rule_AR$VT_code)
-# always pass the merge command your Spatial*DataFrame object.
-AR_PFT_1081_polygons <- merge(ar18x18_raw , transl_rule_AR, by.x = "VEG1",by.y = "VT_code")
-#save the file
-writeOGR(AR_PFT_1081_polygons, layer =  "AR_PFT_1081", paste0(out_folder, "AR18x18"), overwrite_layer = TRUE, driver="ESRI Shapefile")
-# cut out the 20 plots
-AR_PFT_20_polygons <- subset(AR_PFT_1081_polygons, AR_PFT_1081_polygons@data$FLATE_NR %in% test_20_plots)
-writeOGR(AR_PFT_20_polygons, layer =  "AR_PFT_20", paste0(out_folder, "AR18x18"), overwrite_layer = TRUE, driver="ESRI Shapefile")
-
-# add column with row names equal to first column
-AR_VT_20rownames <- data.frame(append(AR_VT_20, list(rownames(AR_VT_20)), after=0))
-names(AR_VT_20rownames)[1] <- "VT_code"
-# append PFT code and name for TRANSLATION 
-AR_VT_20rownames <- data.frame(append(AR_VT_20rownames, list(transl_rule_AR$PFT_code), after=match("VT_code", names(AR_VT_20rownames))))
-AR_VT_20rownames <- data.frame(append(AR_VT_20rownames, list(transl_rule_AR$PFT_name), after=match("VT_code", names(AR_VT_20rownames))))
-names(AR_VT_20rownames)[2] <- "PFT_name"
-names(AR_VT_20rownames)[3] <- "PFT_code"
-#colnames(AR_VT_20rownames)[4:ncol(AR_VT_20rownames)] <- colnames(AR_VT_20)
-write.csv2(AR_VT_20rownames, paste0(out_folder,"/AR18x18/AR_VT_20rownames.csv"))
-# aggregate according to translation scheme
-AR_PFT_20 <- aggregate(AR_VT_20rownames[4:length(AR_VT_20rownames)], by=list(PFT_code=AR_VT_20rownames$PFT_code), FUN=sum)
-# changed order
-rownames(AR_PFT_20) <- AR_PFT_20[,1]
-AR_PFT_20 <- AR_PFT_20[2:ncol(AR_PFT_20)]
-AR_PFT_20 <- AR_PFT_20[match(PFT[,2], rownames(AR_PFT_20)),]
-write.csv2(AR_PFT_20, paste0(out_folder,"/AR18x18/AR_PFT_20.csv"))
-#colnames(AR_PFT_20) <- colnames(AR_VT_20)
-#after being aggregated, need to harmonize sums to fractions of 100 (%)
-# divide by sum of each column (number of raster cells) * 100
-ARtemp_df <- list()
-ARtemp <- sapply(names(AR_PFT_20), function(x) {
-  ARtemp_df[paste0(x)] <<- (AR_PFT_20[x] / sum(AR_PFT_20[x]))*100
-})
-AR_PFT_20_perc<-as.data.frame(ARtemp)
-rownames(AR_PFT_20_perc) <- rownames(AR_PFT_20)
-AR_PFT_20_perc <- round(AR_PFT_20_perc, 2)
-names(AR_PFT_20_perc) <- paste0("X", names(AR_VT_20))
-#AR_VT_1081_perc[1:4]
-# we are excluding excluded types
-write.csv2(AR_PFT_20_perc[7,], paste0(out_folder,"/single_cells_20_compare/AR_PFT_20_excl.csv"))
-# recalculate the percentages again without the excluded 7th line
-
-AR_PFT_20_perc <- AR_PFT_20_perc[-7,]
-ARtemp_df <- list()
-ARtemp <- sapply(names(AR_PFT_20_perc), function(x) {
-  ARtemp_df[paste0(x)] <<- (AR_PFT_20_perc[x] / sum(AR_PFT_20_perc[x]))*100
-})
-AR_PFT_20_perc<-as.data.frame(ARtemp)
-rownames(AR_PFT_20_perc) <- rownames(AR_PFT_20)[1:6]
-#AR_PFT_20_perc <- round(AR_PFT_20_perc, 2)
-names(AR_PFT_20_perc) <- paste0("X", names(AR_VT_20))
-write.csv2(AR_PFT_20_perc, paste0(out_folder,"/single_cells_20_compare/AR_PFT_20_perc.csv"))
-
-
-AR_PFT_20_freq <- rowSums(AR_PFT_20/sum(AR_PFT_20)*100)
-write.csv2(AR_PFT_20_freq, paste0(out_folder,"/AR18x18/AR_PFT_20_freq.csv"))
-
-
-#### test representativenes of PFTs 
+#### test representativness of PFT coverage on the 20 plots ####
 # repeat the steps above with the whole 1081 dataset polygons
 #ar18x18_vt_flate <- ar18x18_raw_str
 AR_VT_1081rownames <- data.frame(append(AR_VT_1081, list(rownames(AR_VT_1081)), after=0))
@@ -731,14 +535,30 @@ prop.test(AR_PFT_1081_freq, AR_PFT_20_freq)
 
 vegdist(t(cbind(AR_PFT_1081_freq, AR_PFT_20_freq)))
 
-#************
+#************####
 
-pft_data <- PFT_df # PFT_df is created within 01_comparison_vegan.R
+pft_data <- PFT_df # PFT_df is created within 01_comparison_***.R script
 path="E:/Project_2_RUNS/OUTPUT/results"
 pft_data <- read.csv2(file = paste0(path, "/PFT_df.csv"))
+colNames <- names(pft_data)[7:NCOL(pft_data)] 
+#colNames <- names(pft_data)[7:NCOL(pft_data)] # could be also 7:12 in adjusted version of DGVM
 pft_data <- read.csv2(file = paste0(path, "/PFT_df_adj.csv"), dec = ".") # adjusted values for precipitation seasonality (bioclim_15) from DGVM sensitivity analysis
+colNames <- names(pft_data)[7:NCOL(pft_data)] 
 
 ######### GRAPHICS #############
+# custom color scale
+library(RColorBrewer)
+myColors <- brewer.pal(6,"Spectral")
+names(myColors) <- c("Broadleaf deciduous boreal shrub",
+                     "Broadleaf deciduous boreal tree",
+                     "Broadleaf deciduous temperate tree",
+                     "C3 grass",
+                     "Needleleaf evergreen boreal tree",
+                     "Bare ground / Not vegetated")
+#names(myColors) <- order(levels(pft_data$PFT_code), c(6, 3,2,5,1,4))
+#colScale <- scale_colour_manual(name = "PFT_code",values = myColors)
+colScale <- scale_fill_manual(name = "PFT_name",values = myColors)
+
 # One specific example of GGPLOT
 g <- ggplot(pft_data, aes(x = Method, y = pft_data$X622, fill = PFT_name)) +
   colScale
@@ -754,112 +574,6 @@ g <- ggplot(pft_data, aes(x = Method, y = X513, fill = PFT_code)) + scale_fill_b
 g 
  # scale_y_continuous(labels = percent_format())
 
-# One specific example of GGPLOT split with GGarrange
-g1 <- ggplot(pft_data[pft_data$Method %in% c("DM_AUC", "DM_maxval", "DM_preval", "RS", "DGVM"),], aes(x = Method, y = X405, fill = PFT_code)) +
-  scale_fill_brewer(palette = "Spectral") 
-g1 <- g1 + geom_bar(position = "fill",stat = "identity") + # position (stack, dodge, fill)
-  labs(title="PFT coverage", 
-       #caption="Source: NCAR, SatVeg",
-       x="Modelling Method",
-       y="plot 222") +
-  theme(legend.position = "none") # hide legend
-g2  <- ggplot(pft_data[pft_data$Method %in% c("AR18x18"),], aes(x = Method, y = X405, fill = PFT_code)) +
-  scale_fill_brewer(palette = "Spectral") 
-g2 <- g2 + geom_bar(position = "fill",stat = "identity") + # position (stack, dodge, fill)
-  labs(title=" ", 
-       x="Ground Survey", 
-       y= NULL) + 
-  scale_y_continuous(breaks = NULL)
-#arrange next to each other
-grid.arrange(g1,g2, widths = c(3,1))
-
-g <- ggplot(pft_data, aes(x = Method, y = X513, fill = PFT_code)) + scale_fill_brewer(palette = "Spectral") 
-g + geom_bar(position = "fill",stat = "identity") +
-  scale_y_continuous(labels = percent_format())
-
-
-# * generic loop for all ####
-colNames <- names(pft_data)[5:NCOL(pft_data)] 
-#colNames <- names(pft_data)[7:NCOL(pft_data)] # could be also 7:12 in adjusted version of DGVM
-for (i in colNames){
-  print(paste0('creating graphs DGVM vs RS for plot #', i ))
-  g <- ggplot(pft_data, aes_string(x = "Method", y = i, fill = "PFT_name")) + scale_fill_brewer(palette = "Spectral") +
-    geom_bar(position = "fill",stat = "identity") +
-    scale_y_continuous(labels = percent_format()) + 
-    labs(title="PFT coverage", 
-         subtitle= paste(i),
-         caption="Source: NCAR, SatVeg , NIBIO",
-         x="Modelling Method",
-         y= paste("plot",i))
-  # print(g)
-  # output png
-  ggsave(filename = paste0(i, "DM3_DGVM_RS_AR.png"), device = "png", path = paste0(out_ggplots, "/plots_6way/"),dpi = 300 )
- }
-# * select only maxval method for DM ####
-for (i in colNames){
-  print(paste0('creating graphs DGVM vs RS for plot #', i ))
-  g <- ggplot(pft_data[pft_data$Method %in% c("AR18x18", "DM_maxval", "RS", "DGVM"),], aes_string(x = "Method", y = i, fill = "PFT_name"))+
-    scale_fill_brewer(palette = "Spectral") +
-    geom_bar(position = "fill",stat = "identity") +
-    scale_y_continuous(labels = percent_format()) + 
-    labs(title="PFT coverage", 
-         subtitle= paste(i),
-         caption="Source: NCAR, SatVeg , NIBIO",
-         x="Modelling Method",
-         y= paste("plot",i))
-  # print(g)
-  # output png
-  ggsave(filename = paste0(i, "DM_maxval_DGVM_RS_AR.png"), device = "png", path = paste0(out_ggplots, "/plots_4way/"),dpi = 300 )
-}
-
-# * select also DGVM_adj method for comparison ####
-for (i in colNames){
-  print(paste0('creating graphs DGVM vs RS for plot #', i ))
-  g <- ggplot(pft_data[pft_data$Method %in% c("DGVM", "DGVM_adj","RS", "DM_maxval", "AR18x18"),], aes_string(x = "Method", y = i, fill = "PFT_code"))+
-    colScale + 
-    # scale_fill_brewer(palette = "Spectral") +
-    geom_bar(position = "fill",stat = "identity") +
-    #scale_y_continuous(labels = percent_format()) + 
-    labs(title="PFT coverage", 
-         subtitle= paste(i),
-         #caption="Source: NCAR, SatVeg , NIBIO",
-         x="Modelling Method",
-         y= paste("plot",i))
-  # print(g)
-  # output png
-  ggsave(filename = paste0(i, "DM_maxval_DGVM_RS_AR.png"), device = "png", path = paste0(out_ggplots, "/DGVM_adj/"),dpi = 300 )
-}
-
-
-# * Maxval method vs AR for DM ####
-# and split AR from the rest
-for (i in colNames){
-  print(paste0('creating graphs DGVM vs RS for plot #', i ))
-  g1 <- ggplot(pft_data[pft_data$Method %in% c("DM_maxval", "RS", "DGVM"),],
-                aes_string(x = "Method", y = i, fill = "PFT_name")) + 
-    scale_fill_brewer(palette = "Spectral") +
-    geom_bar(position = "fill",stat = "identity") +
-    scale_y_continuous(labels = percent_format()) + 
-    labs(title="PFT coverage", 
-         #caption="Source: NCAR, SatVeg",
-         x="Modelling Method",
-         y=paste("plot ",i)) +
-    theme(legend.position = "none")# hide legend
-  g2 <- ggplot(pft_data[pft_data$Method %in% c("AR18x18"),],
-               aes_string(x = "Method", y = i, fill = "PFT_name")) + 
-    scale_fill_brewer(palette = "Spectral") +
-    geom_bar(position = "fill",stat = "identity") +
-    labs(title=" ", 
-         #caption="Source: NCAR, SatVeg",
-         x="Ground Survey",
-         y=NULL) +
-           scale_y_continuous(breaks = NULL)
-  
-   #arrange next to each other
-  g12 <- arrangeGrob(g1,g2, widths = c(1,1))
-  
-  ggsave(plot = g12, filename = paste0("AR_vs_Methods_DM_maxval",i,".png"), device = "png", width = 10, height = 7, path = paste0(out_ggplots, "/plots_4way/"),dpi = 300 )
-}
 
 # * graphs FOR PUBLICATION ON A MAP IN QGIS ####
 # no legend, no labels
@@ -867,18 +581,6 @@ colNames<-colnames(pft_data)[7:ncol(pft_data)] #[5:24] #
 colNames_number<-gsub("X", "#", colNames)
 
 #Create a custom color scale (https://stackoverflow.com/questions/6919025/how-to-assign-colors-to-categorical-variables-in-ggplot2-that-have-stable-mappin)
-library(RColorBrewer)
-myColors <- brewer.pal(6,"Spectral")
-names(myColors) <- c("Broadleaf deciduous boreal shrub",
-                     "Broadleaf deciduous boreal tree",
-                     "Broadleaf deciduous temperate tree",
-                     "C3 grass",
-                     "Needleleaf evergreen boreal tree",
-                     "Bare ground / Not vegetated")
-#names(myColors) <- order(levels(pft_data$PFT_code), c(6, 3,2,5,1,4))
-#colScale <- scale_colour_manual(name = "PFT_code",values = myColors)
-colScale <- scale_fill_manual(name = "PFT_name",values = myColors)
-
 
 for (i in colNames){
   print(paste0('creating graphs DGVM vs RS for plot #', i ))
@@ -896,22 +598,7 @@ for (i in colNames){
          x="Modelling Method",
          y="PFT profile") +
     theme_void() + theme(legend.position="none")    # hide legend and labels on X axis  # theme_void()
-  
-  # g2 <- ggplot(pft_data[pft_data$Method %in% c("AR18x18"),],
-  #              aes_string(x = "Method", y = i, fill = "PFT_name")) + 
-  #   scale_fill_brewer(palette = "Spectral") +
-  #   geom_bar(position = "fill",stat = "identity") +
-  #   labs(title=" ", 
-  #        #caption="Source: NCAR, SatVeg",
-  #        x="Reference Dataset",
-  #        y=NULL) +
-  #   scale_y_continuous(breaks = NULL) +
-  #   theme_void() + theme(legend.position="none")# hide legend
-  # g2
-  # #arrange next to each other
-  # g12 <- arrangeGrob(g1,g2, widths = c(2,1))
-  # #plot(g12)
-  ggsave(plot = g1, filename = paste0("AR_vs_Methods_DM_maxval",i,".png"), device = "png", width = 10, height = 7, path = paste0(out_ggplots, "/plots_4way/"),dpi = 300 ) 
+    ggsave(plot = g1, filename = paste0("AR_vs_Methods_DM_maxval",i,".png"), device = "png", width = 10, height = 7, path = paste0(out_ggplots, "/plots_4way/"),dpi = 300 ) 
   #("AR_vs_Methods_DM_maxval",i,".png")
 }
 
@@ -931,13 +618,366 @@ for (i in colNames){
       #caption="Source: NCAR, SatVeg",
       x="Modelling Method",
       y="PFT profile")  + 
-    theme(legend.position="none")
-    #theme_void()     # hide legend and labels on X axis  # theme_void()
-  ggsave(plot = g1, filename = paste0("AR_vs_DGVM_adj",i,".png"), device = "png", width = 10, height = 7, path = paste0(out_ggplots, "/plots_4way/"),dpi = 300 ) 
+     theme_void() + theme(legend.position="none")      # hide legend and labels on X axis  # theme_void()
+  ggsave(plot = g1, filename = paste0("AR_vs_Methods_DM_maxval",i,".png"), device = "png", width = 10, height = 7, path = paste0(out_ggplots, "/plots_3way/"),dpi = 300 ) #DGVM_adj
   #("AR_vs_Methods_DM_maxval",i,".png")
 }
 
-
 ### ....####
+### ....####
+
+#### Improving the representation of high-latitude vegetation in Dynamic Global Vegetation Models ####
+# Dynamical Vegetation model version CLM-DV4.5
+# updated: 20.10.2020
+# author: Peter Horvath
+
 #### COMPARISON Scheme####
-# in file 01_comparison_vegan.R
+# of different modeling approaches 
+
+library(vegan)
+library(ggplot2)
+# read in data
+in_csv_files <- "C:/Users/peterhor/Documents/GitHub/Project_2/01_Comparison_schemes"
+#path="C:/Users/peterhor/Documents/GitHub/Project_2/output"
+path="E:/Project_2_RUNS/OUTPUT/results"
+csv_list <- list.files(in_csv_files, pattern="csv", full.names=FALSE)
+# read in with column and row names
+
+#read in from GIThub original data 1x1km
+in_csv_files <- "C:/Users/peterhor/Documents/GitHub/GitHub_Enterprise/Project_2/01_Comparison_schemes/"
+comp_DM_maxval <- read.csv2(paste0(in_csv_files,"DM_maxval_PFT.csv"), sep = ";", dec = ".")
+comp_RS <- read.csv2(paste0(in_csv_files,"RS_PFT.csv"), sep = ";", dec = ".")
+comp_DGVM <- read.csv2(paste0(in_csv_files,"DGVM_PFT.csv"), sep = ";", dec = ".")
+comp_AR18x18 <- read.csv2(paste0(in_csv_files,"AR_PFT.csv"), sep = ";", dec = ".")
+
+########***********##########
+# testing 20 plots####
+
+
+PFT_method_names <-list(comp_DM_maxval, comp_RS, comp_DGVM, comp_AR18x18) #comp_DM_maxval, comp_DM_preval,
+names(PFT_method_names) <- c("DM_maxval", "RS", "DGVM", "AR18x18")
+# only data with no labels
+PFT_method_raw <- lapply(PFT_method_names, "[", 5:24)
+#PFT_method_raw[[1]][,2]
+names(PFT_method_raw) <- c("DM_maxval", "RS", "DGVM", "AR18x18")
+saveRDS(PFT_method_raw, file = paste0(path, "/PFT_profiles20.RDS"))
+PFT_method_raw <- readRDS(file = paste0(path, "/PFT_profiles20.RDS"))
+#str(pft_data)
+
+# 0 ####
+# before we merge and compare all the methods, let's explore each method and the sites
+# explore list
+lapply(PFT_method_raw, colSums)
+lapply(PFT_method_raw, rowSums)
+# rename rows in list of DFs
+PFT_method_raw<-lapply(PFT_method_raw, function(x){
+  rownames(x) <- t(comp_DM_maxval[,2])
+  return(x)
+})
+norway_PFT <- as.data.frame(lapply(PFT_method_raw, rowSums))
+#norway_PFT <- format(norway_PFT, digits=1)
+colSums(norway_PFT)
+saveRDS(norway_PFT, file = paste0(path, "/Norway_PFTs_ar20.RDS"))
+write.csv2(norway_PFT, file = paste0(path, "/Norway_PFT_ar20.csv"))
+
+norway_PFT_perc <- norway_PFT/20
+
+cumsum(norway_PFT_perc)
+colsum(norway_PFT_perc)
+colSums(norway_PFT_perc)
+saveRDS(norway_PFT_perc, file = paste0(path, "/Norway_PFTs_ar20_perc.RDS"))
+write.csv2(norway_PFT_perc, file = paste0(path, "/Norway_PFT_ar20_perc.csv"))
+write.csv2(norway_PFT_perc[,c(5,4,2,6)], file = paste0(path, "/Norway_PFT_ar20_perc_TABLE3results.csv"))
+norway_PFT_perc <- readRDS(file = paste0(path, "/Norway_PFTs_ar20_perc.RDS"))
+# area statistics NORWAY testing method against reference AR 
+# CHI
+chisq.test(cbind(norway_PFT_perc$DM_maxval, norway_PFT_perc$AR18x18))
+chisq.test(cbind(norway_PFT_perc$RS, norway_PFT_perc$AR18x18))
+chisq.test(cbind(norway_PFT_perc$DGVM, norway_PFT_perc$AR18x18))
+# FISHER
+fisher.test(cbind(norway_PFT_perc$DM_maxval, norway_PFT_perc$AR18x18))
+fisher.test(cbind(norway_PFT_perc$RS, norway_PFT_perc$AR18x18))
+fisher.test(cbind(norway_PFT_perc$DGVM, norway_PFT_perc$AR18x18))
+#KOLMOGOROV-Smirnov test
+ks.test(norway_PFT_perc$DM_maxval, norway_PFT_perc$AR18x18)
+
+#testing vegdist across 20 sites merged
+vegdist(t(norway_PFT))
+vegdist(t(PFT_method_raw[[1]]))
+hist(vegdist(t(PFT_method_raw[[1]])), main = names(PFT_method_raw)[[1]])
+lapply(PFT_method_raw, function(x){vegdist(t(x))})
+lapply(PFT_method_raw, function(x){hist(vegdist(t(x)))})
+
+
+# 
+bray_sites <- lapply(PFT_method_raw, function(x){
+  res <- vegdist(t(x))
+  return(round(res,2))
+})
+lapply(bray_sites,summary)
+# plot histogram of similarity between sites
+lapply(bray_sites, function(x) hist(x))
+# library(ggplot2)
+# ggplot(bray_sites[[1]], aes(x=DM_maxval) + geom_histogram())
+# lapply(bray_sites, function(g) ggplot(g, aes=(x=)))
+
+#PFT_method_raw[["DGVM"]][,2]
+lapply(PFT_method_raw, "[", 4) #list of dataframes on the fourth place of parent list
+lapply(PFT_method_raw, "[[", 4) #list of vectors on the fourth place of parent list
+
+# we can compute Bray-Curtis dissimilarities for each site individually 
+
+#In bray-curtis dissimilarity calculations, the rows should represent sites (in our case methods),
+#while the colums are species (PFTs)
+# thus need to transpose data
+
+#1 Bray-Curtis dissimilarities for each site ####
+# packed into a function
+bray_curtis <- function(site){
+  site_1_20<- t(as.data.frame(lapply(PFT_method_raw, "[", site)))
+  rownames(site_1_20) <- c( "DM_maxval", "RS", "DGVM", "AR18x18")
+  colnames(site_1_20) <- t(comp_DM_maxval[,2])
+  bray_site_1_20<-vegdist(site_1_20, method = "bray")
+  return(bray_site_1_20)
+}
+# note site locations are on columns 4:23
+#ncol(PFT_method_raw[[1]])
+bray_curtis(5)  
+
+a <- vector('list', length(2))
+for(i in 1:20){
+  a[[i]] <- bray_curtis(i)
+  names(a)[i] <- colnames(PFT_method_raw[[1]])[i]
+}
+# preparing the output
+a
+a[[4]]
+a[[20]][c(5,9,12,14,15)]
+mypos <- c(5,9,12,14,15) #positions for BC dissimilarity of AR18x18 to each of the other methods
+#extracting positions from each list
+sapply(a, "[", mypos)
+lapply(a, "[", mypos)
+#getting means for each Method compared to AR18x18
+mean(sapply(a, "[", mypos[1]))
+mean(sapply(a, "[", mypos[2]))
+mean(sapply(a, "[", mypos[3]))
+
+#plotting mean BC Dissimilarity for method across sites
+# alternatively load Braycurtis_3methods.csv from file #
+bc_dis <- read.csv2(paste0(path, "/braycurtis_3methods.csv"), sep = ";", dec=".", header = TRUE)
+bc_dis <- as.data.frame(t(sapply(a, "[", mypos)))
+bc_dis <- cbind(rownames(bc_dis),bc_dis)
+colnames(bc_dis) <- c("plot_nr", "DM_maxval", "RS", "DGVM")
+summary(bc_dis)
+write.csv2(bc_dis, file = paste0(path, "/braycurtis_ar20.csv"))
+write.csv2(bc_dis[,c("DM_maxval", "RS", "DGVM")], file = paste0(path, "/braycurtis_3methods_ar20.csv"))
+#rowMeans(bc_dis)
+#colMeans(bc_dis)
+#
+bc_dis <- read.csv2(file = paste0(path, "/braycurtis_3methods_ar20.csv"))
+wilcox.test(bc_dis$DM_maxval, bc_dis$DGVM)
+wilcox.test(bc_dis$RS, bc_dis$DGVM)
+wilcox.test(bc_dis$RS, bc_dis$DM_maxval)
+
+# plot BC####
+library(reshape2)
+bc_dis_l <- melt(bc_dis)
+colnames(bc_dis_l) <- c("plot_nr","Method", "Bray_Curtis")
+saveRDS(bc_dis_l, file = paste0(path, "/braycurtis_long.RDS"))
+#bc_dis_l <- readRDS(file = paste0(path, "/braycurtis_long.RDS"))
+write.csv2(bc_dis_l, file = paste0(path, "/braycurtis_long.csv"))
+## all methods including "DM_maxval", "DM_preval"
+bc_plot1 <- ggplot(bc_dis_l, aes(x=Method, y=Bray_Curtis, fill=Method)) + 
+  geom_boxplot(alpha=0.8) +
+  geom_point(aes(fill = Method), alpha=0.8, size = 3, shape = 21, position = position_jitterdodge()) +
+  labs(x="Modelling method",
+       y="Proportional dissimilarity") 
+bc_plot1
+ggsave(filename = "Project_2_bc_plot1.png",plot = bc_plot1, device = "png", path = paste0(path, "/ggplots"),dpi = 300 )
+
+#only three relevant methods
+bc_plot3 <- ggplot(bc_dis_l[bc_dis_l$Method %in% c("DM_maxval", "RS", "DGVM"),], aes(x=Method, y=Bray_Curtis, fill=Method)) + 
+  geom_boxplot(alpha=0.8) +
+  geom_point(aes(fill = Method), alpha=0.8, size = 3, shape = 21, position = position_jitterdodge()) +
+  labs(x="Modelling method",
+       y="Proportional dissimilarity") 
+bc_plot3
+ggsave(filename = "Project_2_bc_methods3.png",plot = bc_plot3, device = "png", path = paste0(path, "/ggplots"),dpi = 300 )
+
+# with corresponding plot numbers connected with grey line
+bc_plot3.1 <- ggplot(bc_dis_l[bc_dis_l$Method %in% c("DM_maxval", "RS", "DGVM"),], aes(x=Method, y=Bray_Curtis, fill=Method)) + 
+  geom_boxplot(alpha=0.8) +
+  geom_point(aes(fill = Method), alpha=0.8, size = 3, shape = 21, position = position_jitterdodge()) +
+  labs(x="Modelling method",
+       y="Proportional dissimilarity") +
+  geom_line(aes(group=plot_nr), colour="grey",  alpha=0.5)
+bc_plot3.1
+ggsave(filename = "Project_2_bc_methods3.1.png",plot = bc_plot3.1, device = "png", path = paste0(path, "/ggplots"),dpi = 300 )
+
+bc_plot6.1 <- ggplot(bc_dis_l, aes(x=Method, y=Bray_Curtis, fill=Method)) + 
+  geom_boxplot(alpha=0.8) +
+  geom_point(aes(fill = Method), alpha=0.8, size = 3, shape = 21, position = position_jitterdodge()) +
+  labs(x="Modelling method",
+       y="Proportional dissimilarity") +
+  geom_line(aes(group=plot_nr), colour="grey",  alpha=0.5)
+bc_plot6.1
+ggsave(filename = "Project_2_bc_methods6.1.png",plot = bc_plot6.1, device = "png", path = paste0(path, "/ggplots"),dpi = 300 )
+
+# DM_maxval with corresponding plot numbers connected with grey line
+# modorder <- c("DGVM","RS","DM")
+bc_plot3.11 <- ggplot(bc_dis_l[bc_dis_l$Method %in% c("DGVM","RS","DM_maxval"),], aes(x=Method, y=Bray_Curtis, fill=Method)) + 
+  geom_boxplot(alpha=0.8) +
+  #scale_color_manual(labels=c("DGVM","RS","DM")) +
+  scale_x_discrete(limits= c("DGVM","RS","DM_maxval"),labels=c("DGVM","RS","DM")) + # changing the order and the label names
+  #scale_fill_discrete(name = "Method", guide=c("DGVM","RS","DM_maxval"),  labels=c("DGVM","RS","DM")) + # change legend # eventually + 
+  theme(legend.position = "none") +
+  geom_point(aes(fill = Method), alpha=0.8, size = 3, shape = 21, position = position_jitterdodge()) +
+  labs(x="Modelling method",
+       y="Proportional dissimilarity") +
+  geom_line(aes(group=plot_nr), colour="grey",  alpha=0.5)
+bc_plot3.11
+ggsave(filename = "Project_2_bc_methods3.11_ar20_new2.png",plot = bc_plot3.11, device = "png", path = paste0(path, "/ggplots"),dpi = 300 )
+
+
+
+# 1.1. extension on spatial patterns ####
+#categorize plots into South-North, and Coast-Inland.
+#assess influence of latitude (select north of 62degrees)
+#assess influence of coastalness ()
+library(rgdal)
+center_20plots <- readOGR(in_pts_data, "centerpoint_21test")
+#the lat long is swapped in the dataset
+colnames(center_20plots@data)[5] <- "LONG"
+colnames(center_20plots@data)[6] <- "LAT"
+proxy_coast <- raster("D:/Project_1_FINAL_layers/MASKED_TIFF_uncorrelated/CONTINUOUS/Proxy_coast.tif")
+# values to points
+proxy_vals <- extract(proxy_coast, center_20plots)
+# add data to SpatialPointsDataFrame
+center_20plots@data$proxy_coast <- proxy_vals
+
+sp_pattern <- cbind(center_20plots@data, bc_dis)
+sp_pattern<-sp_pattern[,-c(1:4)]
+# 1.12 statistical tests####
+summary(lm(LAT~RS, data = sp_pattern))
+summary(lm(LAT~DM_maxval, data = sp_pattern))
+summary(lm(LAT~DGVM, data = sp_pattern))
+summary(lm(proxy_coast~RS, data = sp_pattern))
+summary(lm(proxy_coast~DM_maxval, data = sp_pattern))
+summary(lm(proxy_coast~DGVM, data = sp_pattern))
+
+# 1.13 plot tests####
+
+library(reshape2)
+sp_pattern_l <- melt(sp_pattern, id = c("LAT", "LONG", "plot_nr", "proxy_coast")) #melt with ID also on LAT & Long
+colnames(sp_pattern_l) <- c("LAT","LONG","plot_nr","proxy_coast","Method", "Bray_Curtis")
+
+# look at latitude influence 
+sp_plot1 <- ggplot(sp_pattern_l, aes(x=Bray_Curtis, y=LONG, colour=Method, fill=Method)) + 
+  geom_point(alpha=0.8, size = 3, shape = 21) + 
+  facet_wrap(~Method, scales = "free") +
+  stat_smooth(formula=y~x, method = lm, alpha=0.2, linetype="dotted") + #fill="grey",linetype="dotted",
+  labs(x="Proportional dissimilarity index across methods",
+       y="Latitude") 
+sp_plot1
+ggsave(filename = "Project_2_sp_plot1.png",plot = sp_plot1, device = "png", path = paste0(path, "/ggplots"),dpi = 300 )
+# look at coast proximity influence
+sp_plot2 <- ggplot(sp_pattern_l, aes(x=Bray_Curtis, y=proxy_coast,colour=Method, fill=Method)) + 
+  geom_point(alpha=0.8, size = 3, shape = 21) +
+  facet_wrap(~Method, scales = "free") +
+  stat_smooth(formula=y~x, method = lm, alpha=0.2, linetype="dotted") + #fill="grey",
+  labs(x="Proportional dissimilarity index along methods", 
+       y="proximity to coast") 
+sp_plot2
+ggsave(filename = "Project_2_sp_plot2.png",plot = sp_plot2, device = "png", path = paste0(path, "/ggplots"),dpi = 300 )
+
+# 3final methods look at latitude influence 
+sp_plot1 <- ggplot(sp_pattern_l[sp_pattern_l$Method %in% c("DM_maxval", "RS", "DGVM"),], aes(x=Bray_Curtis, y=LONG, colour=Method, fill=Method)) + 
+  geom_point(alpha=0.8, size = 3, shape = 21) + 
+  facet_wrap(~Method, scales = "free") +
+  stat_smooth(formula=y~x, method = lm, alpha=0.2, linetype="dotted") + #fill="grey",linetype="dotted",
+  labs(x="Proportional dissimilarity index across methods",
+       y="Latitude") 
+sp_plot1
+ggsave(filename = "Project_2_sp_plot1_3methods.png",plot = sp_plot1, device = "png", path = paste0(path, "/ggplots"),dpi = 300 )
+# 3final methods look at coast proximity influence
+sp_plot2 <- ggplot(sp_pattern_l[sp_pattern_l$Method %in% c("DM_maxval", "RS", "DGVM"),], aes(x=Bray_Curtis, y=proxy_coast,colour=Method, fill=Method)) + 
+  geom_point(alpha=0.8, size = 3, shape = 21) +
+  facet_wrap(~Method, scales = "free") +
+  stat_smooth(formula=y~x, method = lm, alpha=0.2, linetype="dotted") + #fill="grey",
+  labs(x="Proportional dissimilarity index along methods", 
+       y="proximity to coast") 
+sp_plot2
+ggsave(filename = "Project_2_sp_plot2_3methods.png",plot = sp_plot2, device = "png", path = paste0(path, "/ggplots"),dpi = 300 )
+
+
+#### 2 working with data frame#### 
+#MELT DATA FROM LIST INTO LONG FORM FOR PLOTTING IN GGPLOT
+library(reshape2)
+library(data.table)
+PFT_df <- rbindlist(PFT_method_names, idcol = TRUE)
+colnames(PFT_df)[1] <- "Method"
+colnames(PFT_df)[4] <- "PFT_code"
+saveRDS(PFT_df, file = paste0(path, "/PFT_df.RDS"))
+write.csv2(PFT_df, file = paste0(path, "/PFT_df.csv"))
+PFT_melt <- melt(PFT_df[,-3], variable.name = "site", value.name = "percentage") # exclude 4th column as it includes a integer name for PFTs - and is restraining from proper use of melt function
+saveRDS(PFT_melt, file = paste0(path, "/PFT_melt.RDS"))
+write.csv2(PFT_melt, file = paste0(path, "/PFT_melt.csv"))
+PFT_melt<- read.csv2(file = paste0(path, "/PFT_melt.csv"))
+
+#Pft representation per site with regard to method
+pft <- ggplot(PFT_melt, aes(x=PFT_code, y=percentage, fill=Method)) +
+  geom_bar(position = "stack",stat = "identity") + 
+  facet_wrap(~site, scales = "free")+
+  scale_fill_brewer(palette = "Spectral") +
+  scale_y_continuous(labels = scales::comma_format()) +
+  theme(axis.text.x=element_text(angle=90, vjust = 0.5)) + 
+  labs(title="TRALALA", 
+       fill="FILL",
+       x="PFT",
+       y=expression ("percent i"~m^2))
+pft
+ggsave(filename = "PFT_nonsense.png",plot = pft, width = 15, height = 12, device = "png", path = paste0(path, "/ggplots"),dpi = 300 )
+
+
+#Pft representation with regard to method 
+# we can observe that there is a general lack of representation of PFT 8 in DGVM and a total overrepresentation of PFT2
+pft1 <- ggplot(PFT_melt[PFT_melt$Method %in% c("AR18x18","DM_maxval", "RS", "DGVM"),], aes(x=PFT_shortcut, y=percentage, fill = PFT_name)) +
+  geom_bar(position = "stack",stat = "identity") + 
+  facet_wrap(~Method)+ #, scales = "free", ncol = 1
+  colScale + #scale_fill_brewer(palette = "Spectral") +
+  scale_y_continuous(labels = scales::comma_format()) +
+  theme(axis.text.x=element_text(angle=90, vjust = 0.5)) + 
+  labs(title="Coverage of PFTs per Method", 
+       fill="Legend",
+       x="PFT",
+       y=expression ("cumulative percent "))
+pft1
+ggsave(filename = "PFT_method_3.1_DM_maxval.png",plot = pft1, width = 15, height = 12, device = "png", path = paste0(path, "/ggplots/"),dpi = 300 )
+# position dodge
+pft1.1 <- ggplot(PFT_melt[PFT_melt$Method %in% c("AR18x18","DM_maxval", "RS", "DGVM"),], aes(x=PFT_shortcut, y=percentage, fill=Method)) +
+  geom_bar(position = "dodge",stat = "identity") + 
+  scale_fill_brewer(palette = "Spectral") +
+  scale_y_continuous(labels = scales::comma_format()) +
+  theme(axis.text.x=element_text(angle=90, vjust = 0.5)) + 
+  labs(title="Coverage of PFTs per Method", 
+       fill="Legend",
+       x="PFT",
+       y=expression ("cumulative percent "))
+pft1.1
+ggsave(filename = "PFT_method_3.1_DM_maxval.png",plot = pft1.1, width = 15, height = 12, device = "png", path = paste0(path, "/ggplots/"),dpi = 300 )
+
+pft1.2 <- ggplot(PFT_melt, aes(x=PFT_code, y=percentage, fill = PFT_name)) +
+  geom_bar(position = "stack",stat = "identity") + 
+  facet_wrap(~Method)+ #, scales = "free", ncol = 1
+  scale_fill_brewer(palette = "Spectral") +
+  scale_y_continuous(labels = scales::comma_format()) +
+  theme(axis.text.x=element_text(angle=90, vjust = 0.5)) + 
+  labs(title="PFT per Method", 
+       fill="FILL",
+       x="PFT",
+       y=expression ("cumulative percent "))
+pft1.2
+ggsave(filename = "PFT_method_6.1.png",plot = pft1.2, width = 15, height = 12, device = "png", path = paste0(path, "/ggplots/"),dpi = 300 )
+
+
+
