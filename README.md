@@ -1,6 +1,6 @@
 # DGVM_RS_DM_Norway
 ### Important Information
-This repository contains R script used to generate and compare three methods for describing vegetation in Norway. The data is acompanying the manuscript: "Improving the representation of high-latitude vegetation in Dynamic Global Vegetation Models" by authors: Peter Horvath, Hui Tang, Rune Halvorsen, Frode Stordal, Lena Merete Tallaksen, Terje Koren Berntsen, and Anders Bryn currently in review for in Biogeosciences available as [preprint](https://doi.org/10.5194/bg-2020-149)
+This repository contains R script used to generate and compare three methods for describing vegetation in Norway. The data is acompanying the manuscript: "Improving the representation of high-latitude vegetation in Dynamic Global Vegetation Models" by authors: Peter Horvath, Hui Tang, Rune Halvorsen, Frode Stordal, Lena Merete Tallaksen, Terje Koren Berntsen, and Anders Bryn currently in review for in Biogeosciences available as a [preprint](https://doi.org/10.5194/bg-2020-149).
 
 Spatial data will be available for download at the [Dryad Digital Repository](https://doi.org/10.5061/dryad.dfn2z34xn).
 
