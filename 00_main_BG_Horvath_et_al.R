@@ -177,6 +177,8 @@ t_plot <- ggplot(temperature_data, aes(x=data, fill=type)) + # scale_fill_discre
   geom_density(alpha=.3) + 
   geom_vline(data = t_mean, aes(xintercept = rating.mean, colour = type),
           linetype = "longdash", size=1) +
+  theme(legend.position = "none") +
+  theme(text = element_text(size = 17), axis.text = element_text(size = 17)) +
   labs(title="frequency distribution", 
        #caption="Source: NCAR, SatVeg",
        x="Annual Mean Temperature (°C)",
@@ -186,6 +188,8 @@ p_plot <- ggplot(precipitation_data, aes(x=data, fill=type)) + # scale_fill_disc
   geom_density(alpha=.3) + 
   geom_vline(data = p_mean, aes(xintercept = rating.mean, colour = type),
              linetype = "longdash", size=1) +
+  theme(legend.position = "none") +
+  theme(text = element_text(size = 17), axis.text = element_text(size = 17)) +
   labs(title="frequency distribution", 
        #caption="Source: NCAR, SatVeg",
        x="Annual Precipitation (mm)",
@@ -195,6 +199,8 @@ bio15_plot <- ggplot(bio15_data, aes(x=data, fill=type)) + # scale_fill_discrete
   geom_density(alpha=.3) + 
   geom_vline(data = bio15_mean, aes(xintercept = rating.mean, colour = type),
              linetype = "longdash", size=1) +
+  theme(legend.position = "none") +
+  theme(text = element_text(size = 17), axis.text = element_text(size = 17)) +
   labs(title="frequency distribution", 
        #caption="Source: NCAR, SatVeg",
        x="Precipitation Seasonality",
